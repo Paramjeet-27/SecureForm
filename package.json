@@ -1,14 +1,22 @@
 {
-  "name": "private-questionnaire",
+  "name": "secure-form",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "secrets": "node scripts/setup-secrets.js",
+    "dev:fresh": "npm run secrets && npm run dev",
+    "start:fresh": "npm run secrets && npm run build && npm run start",
+    "setup:dev": "npm install && npm run secrets && npm run dev",
+    "setup:prod": "npm install && npm run secrets && npm run build && npm run start"
   },
   "dependencies": {
+    "argon2": "^0.45.1",
+    "iron-session": "^8.0.4",
+    "lucide-react": "^1.32.0",
     "next": "16.3.1",
     "react": "19.2.8",
     "react-dom": "19.2.8"

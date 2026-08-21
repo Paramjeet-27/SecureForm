@@ -39,3 +39,20 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# editor
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# OS
+Thumbs.db
+
+#agents
+.agents
+
+# main-data-file — never commit real data
+data.json
+data.json.bak
+*.data.json
+*.decrypted.json

@@ -1,4 +1,6 @@
-export default function Home() {
+import React from "react";
+
+const InvalidTokenScreen = () => {
   return (
     <main
       style={{
@@ -17,7 +19,6 @@ export default function Home() {
           width: "100%",
         }}
       >
-        {/* Lock icon */}
         <div
           style={{
             fontSize: "2.25rem",
@@ -25,10 +26,9 @@ export default function Home() {
             opacity: 0.5,
           }}
         >
-          🔒
+          🔗
         </div>
 
-        {/* Heading */}
         <h1
           style={{
             fontFamily: "var(--font-dm-sans), sans-serif",
@@ -40,10 +40,9 @@ export default function Home() {
             letterSpacing: "-0.01em",
           }}
         >
-          This tool is private.
+          This link isn&apos;t valid.
         </h1>
 
-        {/* Subtext */}
         <p
           style={{
             fontFamily: "var(--font-dm-sans), sans-serif",
@@ -53,9 +52,11 @@ export default function Home() {
             lineHeight: 1.6,
           }}
         >
-          It can only be accessed via your personal link.
+          Check that you&apos;ve copied the full URL correctly.
         </p>
       </div>
     </main>
   );
-}
+};
+
+export default InvalidTokenScreen;
