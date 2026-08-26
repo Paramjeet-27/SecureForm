@@ -76,7 +76,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
   }
 
-  const { id, updates } = await req.json();
+  const { id, updates, clearAnswer, renamedAnswerValue } = await req.json();
 
   if (
     typeof id !== "string" ||
@@ -100,11 +100,31 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Question not found." }, { status: 404 });
   }
 
+  if ("type" in updates) {
+    const validTypes = ["short_text", "long_text", "mcq_single", "mcq_multi"];
+    if (!validTypes.includes(updates.type)) {
+      return NextResponse.json(
+        { error: "Invalid question type." },
+        { status: 400 },
+      );
+    }
+  }
+
   // Only allow updating specific fields — never let the client overwrite `answer` here
   const allowedFields = ["type", "text", "options", "published", "order"];
   for (const field of allowedFields) {
     if (field in updates) {
       data.questions[id][field] = updates[field];
+    }
+  }
+
+  if (clearAnswer === true) {
+    data.questions[id].answer = null;
+  } else if (renamedAnswerValue !== undefined) {
+    const currentType = data.questions[id].type;
+    const isMcq = currentType === "mcq_single" || currentType === "mcq_multi";
+    if (isMcq && data.questions[id].answer) {
+      data.questions[id].answer = { value: renamedAnswerValue };
     }
   }
 

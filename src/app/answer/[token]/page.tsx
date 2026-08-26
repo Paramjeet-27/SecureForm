@@ -108,19 +108,6 @@ export default function AnswerPage() {
       setQuestions(null);
       return;
     }
-
-    const data = await res.json();
-
-    if (res.ok) {
-      setQuestions((prev) =>
-        prev
-          ? {
-              ...prev,
-              [questionId]: { ...prev[questionId], answer: data.answer },
-            }
-          : prev,
-      );
-    }
   };
 
   const handleChange = (questionId: string, value: string | string[]) => {

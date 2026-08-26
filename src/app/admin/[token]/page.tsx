@@ -10,6 +10,9 @@ import InvalidTokenScreen from "@/components/InvalidTokenScreen";
 import { themes, ThemeKey } from "@/themes";
 import { iconOptions, defaultIcons, IconName } from "@/iconOptions";
 import QuestionCard from "@/components/QuestionCard";
+import QuestionModal, {
+  QuestionModalSubmitPayload,
+} from "@/components/QuestionModal";
 
 type Status = "loading" | "invalidToken" | "needsSetup" | "needsLogin";
 
@@ -36,10 +39,6 @@ export default function AdminPage() {
   const [showPassphrase, setShowPassphrase] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
   const [questions, setQuestions] = useState<Record<string, any> | null>(null);
-  const [newType, setNewType] = useState("short_text");
-  const [newText, setNewText] = useState("");
-  const [newOptionsList, setNewOptionsList] = useState<string[]>([]);
-  const [tempOption, setTempOption] = useState("");
 
   const updateQuestionsState = (
     fn: (prev: Record<string, any> | null) => Record<string, any> | null,
@@ -69,6 +68,7 @@ export default function AdminPage() {
     type: string;
     text: string;
     options: string[] | null;
+    answer?: { value: string | string[] } | null;
   } | null>(null);
 
   // Change respondandt password
@@ -164,46 +164,6 @@ export default function AdminPage() {
     setRespondentPassphrase("");
   };
 
-  const handleAddOptionToList = () => {
-    const trimmed = tempOption.trim();
-    if (trimmed && !newOptionsList.includes(trimmed)) {
-      setNewOptionsList((prev) => [...prev, trimmed]);
-      setTempOption("");
-    }
-  };
-
-  const handleRemoveOptionFromList = (index: number) => {
-    setNewOptionsList((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const handleAddQuestion = async (
-    e: React.FormEvent,
-    onSuccess?: () => void,
-  ) => {
-    e.preventDefault();
-
-    const needsOptions = newType === "mcq_single" || newType === "mcq_multi";
-    const options = needsOptions ? newOptionsList : undefined;
-
-    const res = await fetch("/api/admin/questions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: newType, text: newText, options }),
-    });
-
-    const data = await res.json();
-
-    if (res.ok) {
-      updateQuestionsState((prev) => ({ ...prev, [data.id]: data.question }));
-      setNewText("");
-      setNewOptionsList([]);
-      setTempOption("");
-      onSuccess?.();
-    } else {
-      setError(data.error || "Failed to add question.");
-    }
-  };
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -268,11 +228,6 @@ export default function AdminPage() {
   const closeModal = () => {
     setShowAddModal(false);
     setEditingQuestion(null);
-    setNewText("");
-    setNewType("short_text");
-    setNewOptionsList([]);
-    setTempOption("");
-    setError("");
   };
 
   const openEditModal = (id: string, q: any) => {
@@ -281,43 +236,68 @@ export default function AdminPage() {
       type: q.type,
       text: q.text,
       options: q.options ?? null,
+      answer: q.answer ?? null,
     });
-    setNewText(q.text);
-    setNewType(q.type);
-    setNewOptionsList(q.options ?? []);
-    setTempOption("");
-    setError("");
     setShowAddModal(true);
   };
 
-  const handleEditQuestion = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingQuestion) return;
+  const handleModalSubmit = async (payload: QuestionModalSubmitPayload) => {
+    if (editingQuestion) {
+      const updates: any = {
+        type: payload.type,
+        text: payload.text,
+        options: payload.options,
+      };
+      if (payload.clearAnswer) {
+        updates.answer = null;
+      } else if (payload.updatedAnswerValue !== undefined) {
+        updates.answer = { value: payload.updatedAnswerValue };
+      }
 
-    const needsOptions =
-      editingQuestion.type === "mcq_single" ||
-      editingQuestion.type === "mcq_multi";
-    const options = needsOptions ? newOptionsList : null;
-
-    const res = await fetch("/api/admin/questions", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        id: editingQuestion.id,
-        updates: { text: newText.trim(), options },
-      }),
-    });
-
-    const data = await res.json();
-
-    if (res.ok) {
-      updateQuestionsState((prev) => ({
-        ...prev,
-        [editingQuestion.id]: data.question,
-      }));
-      closeModal();
+      const res = await fetch("/api/admin/questions", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: editingQuestion.id,
+          updates: {
+            type: payload.type,
+            text: payload.text,
+            options: payload.options,
+          },
+          clearAnswer: payload.clearAnswer,
+          renamedAnswerValue:
+            !payload.clearAnswer && payload.updatedAnswerValue !== undefined
+              ? payload.updatedAnswerValue
+              : undefined,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        updateQuestionsState((prev) => ({
+          ...prev,
+          [editingQuestion.id]: data.question,
+        }));
+        closeModal();
+      } else {
+        alert(data.error || "Failed to update question.");
+      }
     } else {
-      setError(data.error || "Failed to update question.");
+      const res = await fetch("/api/admin/questions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: payload.type,
+          text: payload.text,
+          options: payload.options ?? undefined,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        updateQuestionsState((prev) => ({ ...prev, [data.id]: data.question }));
+        closeModal();
+      } else {
+        alert(data.error || "Failed to add question.");
+      }
     }
   };
 
@@ -654,11 +634,6 @@ export default function AdminPage() {
               <button
                 onClick={() => {
                   setEditingQuestion(null);
-                  setNewText("");
-                  setNewType("short_text");
-                  setNewOptionsList([]);
-                  setTempOption("");
-                  setError("");
                   setShowAddModal(true);
                 }}
                 title="Add question"
@@ -684,196 +659,12 @@ export default function AdminPage() {
 
               {/* Add Question Modal */}
               {showAddModal && (
-                <div
-                  style={{
-                    position: "fixed",
-                    inset: 0,
-                    background: "rgba(0,0,0,0.4)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    zIndex: 50,
-                    padding: "1rem",
-                  }}
-                  onClick={(e) => {
-                    if (e.target === e.currentTarget) closeModal();
-                  }}
-                >
-                  <div
-                    style={{
-                      background: "var(--card-gradient)",
-                      borderRadius: "0.75rem",
-                      padding: "1.5rem",
-                      width: "100%",
-                      maxWidth: "480px",
-                    }}
-                  >
-                    <h2
-                      style={{
-                        fontWeight: 600,
-                        marginBottom: "1rem",
-                        fontSize: "1rem",
-                      }}
-                    >
-                      {editingQuestion ? "Edit question" : "Add a question"}
-                    </h2>
-                    <form
-                      onSubmit={(e) =>
-                        editingQuestion
-                          ? handleEditQuestion(e)
-                          : handleAddQuestion(e, closeModal)
-                      }
-                      className="space-y-3"
-                    >
-                      <select
-                        value={newType}
-                        onChange={(e) => setNewType(e.target.value)}
-                        disabled={!!editingQuestion}
-                        className="w-full rounded px-2 py-2"
-                        style={{
-                          border: "1px solid var(--border-color)",
-                          opacity: editingQuestion ? 0.6 : 1,
-                          cursor: editingQuestion ? "default" : "pointer",
-                        }}
-                      >
-                        <option value="short_text">Short text</option>
-                        <option value="long_text">Long text</option>
-                        <option value="mcq_single">Single Select</option>
-                        <option value="mcq_multi">Multi Select</option>
-                      </select>
-                      <input
-                        type="text"
-                        placeholder="Question text"
-                        value={newText}
-                        onChange={(e) => setNewText(e.target.value)}
-                        className="w-full rounded px-3 py-2"
-                        style={{ border: "1px solid var(--border-color)" }}
-                        required
-                      />
-                      {(newType === "mcq_single" ||
-                        newType === "mcq_multi") && (
-                        <div className="space-y-2">
-                          <div className="flex gap-2">
-                            <input
-                              type="text"
-                              placeholder="Add an option..."
-                              value={tempOption}
-                              onChange={(e) => setTempOption(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                  e.preventDefault();
-                                  handleAddOptionToList();
-                                }
-                              }}
-                              className="flex-1 rounded px-3 py-2 text-sm"
-                              style={{
-                                border: "1px solid var(--border-color)",
-                                background: "transparent",
-                                color: "var(--text-color)",
-                              }}
-                            />
-                            <button
-                              type="button"
-                              onClick={handleAddOptionToList}
-                              className="rounded p-2 flex items-center justify-center"
-                              style={{
-                                background: "var(--button-gradient)",
-                                color: "#fff",
-                              }}
-                            >
-                              <AddQuestionIcon size={18} />
-                            </button>
-                          </div>
-
-                          {newOptionsList.length > 0 && (
-                            <ul className="space-y-1 max-h-36 overflow-y-auto">
-                              {newOptionsList.map((opt, idx) => (
-                                <li
-                                  key={idx}
-                                  className="flex items-center justify-between p-2 rounded text-sm"
-                                  style={{
-                                    background: "rgba(128,128,128,0.05)",
-                                    border: "1px solid var(--border-color)",
-                                    color: "var(--text-color)",
-                                  }}
-                                >
-                                  <span>{opt}</span>
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      handleRemoveOptionFromList(idx)
-                                    }
-                                    className="p-1 flex items-center justify-center"
-                                    style={{ color: "var(--muted-text)" }}
-                                  >
-                                    <DeleteIcon size={14} />
-                                  </button>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-
-                          {newOptionsList.length < 2 && (
-                            <p
-                              className="text-xs"
-                              style={{ color: "var(--muted-text)" }}
-                            >
-                              Add at least 2 options.
-                            </p>
-                          )}
-                        </div>
-                      )}
-                      {error && <p className="text-red-600 text-sm">{error}</p>}
-                      <div
-                        style={{
-                          display: "flex",
-                          gap: "0.5rem",
-                          justifyContent: "flex-end",
-                          paddingTop: "0.5rem",
-                        }}
-                      >
-                        <button
-                          type="button"
-                          onClick={closeModal}
-                          className="text-sm rounded px-4 py-2"
-                          style={{
-                            border: "1px solid var(--border-color)",
-                            color: "var(--text-color)",
-                          }}
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="submit"
-                          disabled={
-                            (newType === "mcq_single" ||
-                              newType === "mcq_multi") &&
-                            newOptionsList.length < 2
-                          }
-                          className="text-sm rounded px-4 py-2"
-                          style={{
-                            background: "var(--button-gradient)",
-                            color: "#fff",
-                            opacity:
-                              (newType === "mcq_single" ||
-                                newType === "mcq_multi") &&
-                              newOptionsList.length < 2
-                                ? 0.4
-                                : 1,
-                            cursor:
-                              (newType === "mcq_single" ||
-                                newType === "mcq_multi") &&
-                              newOptionsList.length < 2
-                                ? "not-allowed"
-                                : "pointer",
-                          }}
-                        >
-                          {editingQuestion ? "Save Changes" : "Add Question"}
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-                </div>
+                <QuestionModal
+                  mode={editingQuestion ? "edit" : "add"}
+                  initialQuestion={editingQuestion}
+                  onSubmit={handleModalSubmit}
+                  onClose={closeModal}
+                />
               )}
             </>
           )}

@@ -24,6 +24,10 @@ import {
   Flame,
   Gem,
   Bell,
+  Circle,
+  CircleStop,
+  Square,
+  SquareCheckBig,
 } from "lucide-react";
 
 export const iconOptions = {
@@ -52,6 +56,10 @@ export const iconOptions = {
   Flame,
   Gem,
   Bell,
+  Circle,
+  CircleStop,
+  Square,
+  SquareCheckBig,
 } as const;
 
 export type IconName = keyof typeof iconOptions;
@@ -67,3 +75,11 @@ export const defaultIcons: Record<string, IconName> = {
   saveIndicator: "CheckCircle",
   favicon: "Sparkles",
 };
+
+// Fixed selection-state icons — NOT user-configurable, not part of defaultIcons/theme picker
+export const selectionIcons = {
+  radio: "Circle",
+  radioSelected: "CircleStop",
+  checkbox: "Square",
+  checkboxSelected: "SquareCheckBig",
+} as const satisfies Record<string, IconName>;

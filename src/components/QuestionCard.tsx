@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useThemeIcons } from "./ThemeProvider";
 import { iconOptions, defaultIcons } from "@/iconOptions";
+import QuestionInput from "./QuestionInput";
 
 const typeLabels: Record<string, string> = {
   short_text: "Short text",
@@ -77,118 +78,6 @@ const QuestionCard = ({
       ? answer.value.join(", ")
       : answer.value
     : null;
-
-  const baseInputStyle: React.CSSProperties = {
-    width: "100%",
-    border: "1px solid var(--border-color)",
-    borderRadius: "0.375rem",
-    padding: "0.5rem 0.75rem",
-    fontSize: "0.875rem",
-    background: "transparent",
-    color: "var(--text-color)",
-    boxSizing: "border-box",
-    cursor: isAdmin ? "default" : "text",
-    opacity: isAdmin ? 0.6 : 1,
-    outline: "none",
-  };
-
-  const renderInput = () => {
-    if (type === "short_text") {
-      return (
-        <input
-          type="text"
-          style={baseInputStyle}
-          placeholder="Short answer..."
-          disabled={isAdmin}
-          value={isAdmin ? "" : (value as string)}
-          onChange={(e) => onChange?.(e.target.value)}
-        />
-      );
-    }
-
-    if (type === "long_text") {
-      return (
-        <textarea
-          style={{
-            ...baseInputStyle,
-            minHeight: "80px",
-            resize: "vertical",
-            fontFamily: "inherit",
-          }}
-          placeholder="Long answer..."
-          disabled={isAdmin}
-          value={isAdmin ? "" : (value as string)}
-          onChange={(e) => onChange?.(e.target.value)}
-        />
-      );
-    }
-
-    if ((type === "mcq_single" || type === "mcq_multi") && options?.length) {
-      const isMulti = type === "mcq_multi";
-      const selected = Array.isArray(value)
-        ? value
-        : value
-          ? [value as string]
-          : [];
-
-      return (
-        <div
-          style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}
-        >
-          {options.map((opt, idx) => {
-            const inputId = `${question.id}-opt-${idx}`;
-            const isChecked = isAdmin ? false : selected.includes(opt);
-
-            return (
-              <label
-                key={idx}
-                htmlFor={inputId}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.5rem",
-                  fontSize: "0.875rem",
-                  color: "var(--text-color)",
-                  cursor: isAdmin ? "default" : "pointer",
-                  opacity: isAdmin ? 0.6 : 1,
-                }}
-              >
-                <input
-                  id={inputId}
-                  type={isMulti ? "checkbox" : "radio"}
-                  name={`q-${question.id}`}
-                  value={opt}
-                  disabled={isAdmin}
-                  checked={isChecked}
-                  onChange={() => {
-                    if (isAdmin) return;
-                    if (isMulti) {
-                      const arr = Array.isArray(value)
-                        ? (value as string[])
-                        : [];
-                      const next = arr.includes(opt)
-                        ? arr.filter((v) => v !== opt)
-                        : [...arr, opt];
-                      onChange?.(next);
-                    } else {
-                      onChange?.(opt);
-                    }
-                  }}
-                  style={{
-                    accentColor: "var(--text-color)",
-                    cursor: isAdmin ? "default" : "pointer",
-                  }}
-                />
-                {opt}
-              </label>
-            );
-          })}
-        </div>
-      );
-    }
-
-    return null;
-  };
 
   return (
     <div
@@ -263,7 +152,14 @@ const QuestionCard = ({
         </p>
 
         {/* Input — disabled preview in admin, editable in respondent */}
-        {renderInput()}
+        <QuestionInput
+          id={question.id}
+          type={type}
+          options={options}
+          value={value}
+          onChange={onChange}
+          disabled={isAdmin}
+        />
       </div>
 
       {/* Admin-only panel */}

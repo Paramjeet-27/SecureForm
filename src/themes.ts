@@ -126,6 +126,156 @@ export const themes: Record<string, Theme> = {
     mutedText: "#7A6E96",
     border: "#DDD0F5",
   },
+  crimson: {
+    label: "Crimson",
+    background: {
+      colors: ["#0a0002", "#1a0006", "#3d0011", "#1a0006"],
+      angle: 135,
+      type: "rich",
+    },
+    card: {
+      colors: ["#1a0008", "#2b0010"],
+      angle: 135,
+      type: "simple",
+    },
+    button: {
+      colors: ["#8c1531", "#5c0d1f"],
+      angle: 90,
+      type: "simple",
+    },
+    text: "#f5e6e8",
+    mutedText: "#a8757e",
+    border: "#4a0d1f",
+  },
+  onyx: {
+    label: "Onyx",
+    background: {
+      colors: ["#020202", "#0d0d0f", "#1a1a1e", "#0d0d0f"],
+      angle: 135,
+      type: "rich",
+    },
+    card: {
+      colors: ["#111113", "#1c1c20"],
+      angle: 135,
+      type: "simple",
+    },
+    button: {
+      colors: ["#4a4a52", "#2a2a30"],
+      angle: 90,
+      type: "simple",
+    },
+    text: "#ececee",
+    mutedText: "#9a9aa2",
+    border: "#2e2e34",
+  },
+
+  obsidian: {
+    label: "Obsidian",
+    background: {
+      colors: ["#040007", "#0f0518", "#1c0a2e", "#0f0518"],
+      angle: 140,
+      type: "rich",
+    },
+    card: {
+      colors: ["#150a22", "#1e0f30"],
+      angle: 135,
+      type: "simple",
+    },
+    button: {
+      colors: ["#6b2fa0", "#3d1866"],
+      angle: 90,
+      type: "simple",
+    },
+    text: "#f0e6fa",
+    mutedText: "#9e85b8",
+    border: "#3a1c56",
+  },
+
+  noir: {
+    label: "Noir",
+    background: {
+      colors: ["#050505", "#12100e", "#26201a", "#12100e"],
+      angle: 135,
+      type: "rich",
+    },
+    card: {
+      colors: ["#161310", "#221c17"],
+      angle: 135,
+      type: "simple",
+    },
+    button: {
+      colors: ["#9c7a3f", "#5c451f"],
+      angle: 90,
+      type: "simple",
+    },
+    text: "#f2ece0",
+    mutedText: "#b3a385",
+    border: "#3a2f20",
+  },
+  scarlet: {
+    label: "Scarlet",
+    background: {
+      colors: ["#FF1B6B", "#FF0844", "#C21858", "#FF1B6B"],
+      angle: 135,
+      type: "rich",
+    },
+    card: {
+      colors: ["#FF3D7F", "#E01458"],
+      angle: 135,
+      type: "simple",
+    },
+    button: {
+      colors: ["#2B0512", "#1A0209"],
+      angle: 90,
+      type: "simple",
+    },
+    text: "#1A0209",
+    mutedText: "#5C1228",
+    border: "#C21858",
+  },
+  ivoryScarlet: {
+    label: "Ivory Rose",
+    background: {
+      colors: ["#FFFFFF", "#FFF0F3", "#FFD6E0", "#FFFFFF"],
+      angle: 135,
+      type: "rich",
+    },
+    card: {
+      colors: ["#FFFFFF", "#FFE8ED"],
+      angle: 135,
+      type: "simple",
+    },
+    button: {
+      colors: ["#E01458", "#A80F42"],
+      angle: 90,
+      type: "simple",
+    },
+    text: "#2B0512",
+    mutedText: "#8C4A5E",
+    border: "#F5B8C6",
+  },
+
+  blackAndWhite: {
+    label: "Monochrome",
+    background: {
+      colors: ["#FFFFFF", "#F2F2F2", "#0A0A0A", "#FFFFFF"],
+      angle: 135,
+      type: "rich",
+    },
+    card: {
+      colors: ["#FFFFFF", "#F5F5F5"],
+      angle: 135,
+      type: "simple",
+    },
+    button: {
+      colors: ["#0A0A0A", "#1F1F1F"],
+      angle: 90,
+      type: "simple",
+    },
+    text: "#0A0A0A",
+    mutedText: "#666666",
+    border: "#D9D9D9",
+  },
 };
 
 export type ThemeKey = keyof typeof themes;
