@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getIronSession } from "iron-session";
 import { cookies } from "next/headers";
-import { readDataFile, writeDataFile } from "@/lib/datafile";
+import { readFormFile, writeFormFile, formFileExists } from "@/lib/formFile";
 import { decrypt, encrypt } from "@/lib/crypto";
 import { sessionOptions, SessionData } from "@/lib/session";
 import crypto from "crypto";
@@ -14,6 +14,14 @@ export async function POST(req: NextRequest) {
 
   if (!session.dek || session.role !== "admin") {
     return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
+  }
+
+  const formId = req.nextUrl.searchParams.get("formId");
+  if (!formId) {
+    return NextResponse.json({ error: "formId is required." }, { status: 400 });
+  }
+  if (!formFileExists(formId)) {
+    return NextResponse.json({ error: "Form not found." }, { status: 404 });
   }
 
   const { type, text, options } = await req.json();
@@ -38,12 +46,12 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { meta, encrypted } = readDataFile();
+  const existing = readFormFile(formId);
   const key = Buffer.from(session.dek, "base64");
 
   let data;
   try {
-    data = JSON.parse(decrypt(encrypted, key));
+    data = JSON.parse(decrypt(existing.encrypted, key));
   } catch {
     return NextResponse.json({ error: "Decryption failed." }, { status: 500 });
   }
@@ -61,7 +69,11 @@ export async function POST(req: NextRequest) {
   };
 
   const newEncrypted = encrypt(JSON.stringify(data), key);
-  writeDataFile({ meta, encrypted: newEncrypted });
+  writeFormFile(formId, {
+    version: existing.version,
+    createdAt: existing.createdAt,
+    encrypted: newEncrypted,
+  });
 
   return NextResponse.json({ success: true, id, question: data.questions[id] });
 }
@@ -76,6 +88,14 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
   }
 
+  const formId = req.nextUrl.searchParams.get("formId");
+  if (!formId) {
+    return NextResponse.json({ error: "formId is required." }, { status: 400 });
+  }
+  if (!formFileExists(formId)) {
+    return NextResponse.json({ error: "Form not found." }, { status: 404 });
+  }
+
   const { id, updates, clearAnswer, renamedAnswerValue } = await req.json();
 
   if (
@@ -86,12 +106,12 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }
 
-  const { meta, encrypted } = readDataFile();
+  const existing = readFormFile(formId);
   const key = Buffer.from(session.dek, "base64");
 
   let data;
   try {
-    data = JSON.parse(decrypt(encrypted, key));
+    data = JSON.parse(decrypt(existing.encrypted, key));
   } catch {
     return NextResponse.json({ error: "Decryption failed." }, { status: 500 });
   }
@@ -129,7 +149,11 @@ export async function PATCH(req: NextRequest) {
   }
 
   const newEncrypted = encrypt(JSON.stringify(data), key);
-  writeDataFile({ meta, encrypted: newEncrypted });
+  writeFormFile(formId, {
+    version: existing.version,
+    createdAt: existing.createdAt,
+    encrypted: newEncrypted,
+  });
 
   return NextResponse.json({ success: true, question: data.questions[id] });
 }
@@ -144,18 +168,26 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
   }
 
+  const formId = req.nextUrl.searchParams.get("formId");
+  if (!formId) {
+    return NextResponse.json({ error: "formId is required." }, { status: 400 });
+  }
+  if (!formFileExists(formId)) {
+    return NextResponse.json({ error: "Form not found." }, { status: 404 });
+  }
+
   const { id } = await req.json();
 
   if (typeof id !== "string") {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }
 
-  const { meta, encrypted } = readDataFile();
+  const existing = readFormFile(formId);
   const key = Buffer.from(session.dek, "base64");
 
   let data;
   try {
-    data = JSON.parse(decrypt(encrypted, key));
+    data = JSON.parse(decrypt(existing.encrypted, key));
   } catch {
     return NextResponse.json({ error: "Decryption failed." }, { status: 500 });
   }
@@ -167,7 +199,11 @@ export async function DELETE(req: NextRequest) {
   delete data.questions[id];
 
   const newEncrypted = encrypt(JSON.stringify(data), key);
-  writeDataFile({ meta, encrypted: newEncrypted });
+  writeFormFile(formId, {
+    version: existing.version,
+    createdAt: existing.createdAt,
+    encrypted: newEncrypted,
+  });
 
   return NextResponse.json({ success: true });
 }

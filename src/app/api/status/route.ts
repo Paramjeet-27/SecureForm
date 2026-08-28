@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { dataFileExists } from "@/lib/datafile";
+import { appDataFileExists } from "@/lib/appData";
 
 export async function GET() {
-  return NextResponse.json({ initialized: dataFileExists() });
+  return NextResponse.json({ initialized: appDataFileExists() });
 }

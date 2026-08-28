@@ -70,6 +70,49 @@ export const themes: Record<string, Theme> = {
     mutedText: "#9BC4AB",
     border: "#2C5240",
   },
+  roseGold: {
+    label: "Rose Gold",
+    background: {
+      colors: ["#FFF5F0", "#FFD9E8", "#F5A3C7", "#2B0A1A", "#FFD9E8"],
+      angle: 145,
+      type: "rich",
+    },
+    card: {
+      colors: ["#FFFFFF", "#FFEAF2"],
+      angle: 135,
+      type: "simple",
+    },
+    button: {
+      colors: ["#C21858", "#5C0D2A"],
+      angle: 90,
+      type: "simple",
+    },
+    text: "#2B0A1A",
+    mutedText: "#8C4A5E",
+    border: "#F0B8CE",
+  },
+
+  blackRuby: {
+    label: "Black Ruby",
+    background: {
+      colors: ["#050002", "#1A0008", "#5C0D2A", "#C21858", "#1A0008"],
+      angle: 145,
+      type: "rich",
+    },
+    card: {
+      colors: ["#150006", "#26000E"],
+      angle: 135,
+      type: "simple",
+    },
+    button: {
+      colors: ["#E01458", "#8C1440"],
+      angle: 90,
+      type: "simple",
+    },
+    text: "#F5E6EC",
+    mutedText: "#B37C90",
+    border: "#5C0D2A",
+  },
 
   blush: {
     label: "Blush",

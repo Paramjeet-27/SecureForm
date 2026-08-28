@@ -58,6 +58,14 @@ export const decrypt = (encoded: string, key: Buffer): string => {
 export const generateDataKey = (): Buffer => crypto.randomBytes(KEY_LENGTH);
 
 /**
+ * Generate a unique form ID. Not a secret — access is still gated by the
+ * existing session/token model — just an unguessable-looking identifier
+ * consistent with the rest of the app's ID/token style.
+ */
+export const generateFormId = (): string =>
+  "form_" + crypto.randomBytes(16).toString("hex");
+
+/**
  * Wrap (encrypt) a raw key using another key — same AES-GCM mechanism,
  * just encrypting key bytes instead of JSON text.
  */

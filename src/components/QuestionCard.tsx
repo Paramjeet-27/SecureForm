@@ -211,7 +211,7 @@ const QuestionCard = ({
                 cursor: "pointer",
               }}
             >
-              <ArrowUp size={18} />
+              <ArrowUp size={20} />
             </button>
             <button
               onClick={onMoveDown}
@@ -228,7 +228,7 @@ const QuestionCard = ({
                 cursor: "pointer",
               }}
             >
-              <ArrowDown size={18} />
+              <ArrowDown size={20} />
             </button>
 
             <div style={{ flex: 1 }} />
@@ -236,7 +236,7 @@ const QuestionCard = ({
             <button
               onClick={onTogglePublish}
               style={{
-                fontSize: "0.7rem",
+                fontSize: "0.8rem",
                 padding: "0.2rem 0.6rem",
                 borderRadius: "99px",
                 border: "none",
@@ -252,9 +252,9 @@ const QuestionCard = ({
               }}
             >
               {published ? (
-                <PublishIcon size={18} />
+                <PublishIcon size={20} />
               ) : (
-                <UnpublishIcon size={18} />
+                <UnpublishIcon size={20} />
               )}
               {published ? "Published" : "Draft"}
             </button>
@@ -273,7 +273,7 @@ const QuestionCard = ({
                 padding: "0.2rem 0.4rem",
               }}
             >
-              <EditIcon size={18} />
+              <EditIcon size={20} />
             </button>
 
             <button
@@ -290,7 +290,7 @@ const QuestionCard = ({
                 padding: "0.2rem 0.4rem",
               }}
             >
-              <DeleteIcon size={18} />
+              <DeleteIcon size={20} />
             </button>
           </div>
         </div>

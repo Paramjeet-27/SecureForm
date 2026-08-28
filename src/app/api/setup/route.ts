@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { dataFileExists, writeDataFile } from "@/lib/datafile";
+import { appDataFileExists, writeAppData } from "@/lib/appData";
 import {
   generateSalt,
   deriveKey,
-  encrypt,
   generateDataKey,
   wrapKey,
 } from "@/lib/crypto";
@@ -11,7 +10,7 @@ import { hashPassphrase } from "@/lib/auth";
 import { defaultIcons } from "@/iconOptions";
 
 export async function POST(req: NextRequest) {
-  if (dataFileExists()) {
+  if (appDataFileExists()) {
     return NextResponse.json({ error: "Already set up." }, { status: 400 });
   }
 
@@ -52,25 +51,21 @@ export async function POST(req: NextRequest) {
 
   const dek = generateDataKey();
 
-  const encrypted = encrypt(JSON.stringify({ questions: {} }), dek);
   const adminWrappedDEK = wrapKey(dek, adminKey);
   const serverWrappedDEK = wrapKey(dek, serverKey);
 
-  writeDataFile({
-    meta: {
-      version: 1,
-      createdAt: new Date().toISOString(),
-      adminPassphraseSalt: adminPassphraseSalt.toString("base64"),
-      serverKeySalt: serverKeySalt.toString("base64"),
-      respondentPassphraseHash,
-      adminWrappedDEK,
-      serverWrappedDEK,
-      theme: "calm",
-      gradientAngle: null,
-      icons: { ...defaultIcons },
-    },
-    encrypted,
-  } as any);
+  writeAppData({
+    version: 1,
+    createdAt: new Date().toISOString(),
+    adminPassphraseSalt: adminPassphraseSalt.toString("base64"),
+    serverKeySalt: serverKeySalt.toString("base64"),
+    respondentPassphraseHash,
+    adminWrappedDEK,
+    serverWrappedDEK,
+    theme: "calm",
+    gradientAngle: null,
+    icons: { ...defaultIcons },
+  });
 
   return NextResponse.json({ success: true });
 }

@@ -56,3 +56,8 @@ data.json
 data.json.bak
 *.data.json
 *.decrypted.json
+data/
+
+# Additional Files
+generate-tree.js
+tree.md

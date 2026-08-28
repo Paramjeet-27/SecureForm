@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getIronSession } from "iron-session";
 import { cookies } from "next/headers";
-import { readDataFile, writeDataFile } from "@/lib/datafile";
+import { readAppData, writeAppData } from "@/lib/appData";
 import { hashPassphrase } from "@/lib/auth";
-import { deriveKey, unwrapKey, decrypt } from "@/lib/crypto";
+import { deriveKey, unwrapKey } from "@/lib/crypto";
 import { sessionOptions, SessionData } from "@/lib/session";
 
 export async function POST(req: NextRequest) {
@@ -35,16 +35,15 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { meta, encrypted } = readDataFile() as any;
+  const appData = readAppData();
 
   // Step-up re-verification: prove the caller actually knows the admin
   // passphrase right now, not just that their session cookie is still valid.
-  const salt = Buffer.from(meta.adminPassphraseSalt, "base64");
+  const salt = Buffer.from(appData.adminPassphraseSalt, "base64");
   const adminKey = deriveKey(currentAdminPassphrase, salt);
 
   try {
-    const dek = unwrapKey(meta.adminWrappedDEK, adminKey);
-    decrypt(encrypted, dek);
+    unwrapKey(appData.adminWrappedDEK, adminKey);
   } catch {
     return NextResponse.json(
       { error: "Incorrect admin passphrase." },
@@ -60,9 +59,9 @@ export async function POST(req: NextRequest) {
   }
 
   const newHash = await hashPassphrase(newPassphrase);
-  meta.respondentPassphraseHash = newHash;
+  appData.respondentPassphraseHash = newHash;
 
-  writeDataFile({ meta, encrypted });
+  writeAppData(appData);
 
   return NextResponse.json({ success: true });
 }
