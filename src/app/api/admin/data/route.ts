@@ -1,11 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getIronSession } from "iron-session";
 import { cookies } from "next/headers";
-import { readDataFile } from "@/lib/datafile";
+import { readFormFile, formFileExists } from "@/lib/formFile";
 import { decrypt } from "@/lib/crypto";
 import { sessionOptions, SessionData } from "@/lib/session";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await getIronSession<SessionData>(
     await cookies(),
     sessionOptions,
@@ -15,7 +15,15 @@ export async function GET() {
     return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
   }
 
-  const { encrypted } = readDataFile();
+  const formId = req.nextUrl.searchParams.get("formId");
+  if (!formId) {
+    return NextResponse.json({ error: "formId is required." }, { status: 400 });
+  }
+  if (!formFileExists(formId)) {
+    return NextResponse.json({ error: "Form not found." }, { status: 404 });
+  }
+
+  const { encrypted } = readFormFile(formId);
   const key = Buffer.from(session.dek, "base64");
 
   let data;

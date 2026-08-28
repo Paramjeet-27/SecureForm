@@ -6,8 +6,10 @@ import ThemeProvider, { useThemeIcons } from "@/components/ThemeProvider";
 import LoadingScreen from "@/components/LoadingScreen";
 import InvalidTokenScreen from "@/components/InvalidTokenScreen";
 import QuestionCard from "@/components/QuestionCard";
-import { LogOut, Eye, EyeOff } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { iconOptions, defaultIcons } from "@/iconOptions";
+import Dropdown from "@/components/Dropdown";
+import PasswordInput from "@/components/PasswordInput";
 
 type Status = "loading" | "invalidToken" | "needsLogin" | "loggedIn";
 
@@ -21,13 +23,26 @@ export default function AnswerPage() {
   const [status, setStatus] = useState<Status>("loading");
   const [error, setError] = useState("");
   const [passphrase, setPassphrase] = useState("");
-  const [showPassphrase, setShowPassphrase] = useState(false);
   const [questions, setQuestions] = useState<Record<string, any> | null>(null);
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
+
+  const [forms, setForms] = useState<
+    { id: string; title: string; createdAt: string }[]
+  >([]);
+  const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
 
   const saveTimers = useState<Record<string, ReturnType<typeof setTimeout>>>(
     {},
   )[0];
+
+  const loadForms = async () => {
+    const res = await fetch("/api/forms");
+    const data = await res.json();
+    setForms(data.forms);
+    if (data.forms.length > 0 && !selectedFormId) {
+      setSelectedFormId(data.forms[0].id);
+    }
+  };
 
   useEffect(() => {
     const check = async () => {
@@ -47,9 +62,7 @@ export default function AnswerPage() {
       const sessionData = await sessionRes.json();
 
       if (sessionData.valid) {
-        const dataRes = await fetch("/api/respondent/data");
-        const dataJson = await dataRes.json();
-        setQuestions(dataJson.questions);
+        await loadForms();
         setStatus("loggedIn");
         return;
       }
@@ -79,16 +92,36 @@ export default function AnswerPage() {
 
     setPassphrase("");
 
-    const dataRes = await fetch("/api/respondent/data");
-    const dataJson = await dataRes.json();
-    setQuestions(dataJson.questions);
+    await loadForms();
     setStatus("loggedIn");
   };
+
+  useEffect(() => {
+    if (status !== "loggedIn" || !selectedFormId) return;
+
+    const loadQuestions = async () => {
+      try {
+        const res = await fetch(
+          `/api/respondent/data?formId=${selectedFormId}`,
+        );
+        const dataJson = await res.json();
+        if (res.ok) {
+          setQuestions(dataJson.questions);
+        } else {
+          setQuestions(null);
+        }
+      } catch (err) {
+        console.error("Failed to load questions", err);
+      }
+    };
+
+    loadQuestions();
+  }, [status, selectedFormId]);
 
   const saveAnswer = async (questionId: string, value: string | string[]) => {
     setSavingIds((prev) => new Set(prev).add(questionId));
 
-    const res = await fetch("/api/respondent/answer", {
+    const res = await fetch(`/api/respondent/answer?formId=${selectedFormId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ questionId, value }),
@@ -198,7 +231,7 @@ export default function AnswerPage() {
                   gap: "0.375rem",
                 }}
               >
-                <LogoutIcon size={14} />
+                <LogoutIcon size={26} />
                 Logout
               </button>
             </div>
@@ -206,10 +239,25 @@ export default function AnswerPage() {
               style={{
                 fontSize: "0.875rem",
                 color: "var(--muted-text)",
+                marginBottom: "0.75rem",
               }}
             >
               {Object.keys(questions || {}).length} question(s) available.
             </p>
+
+              <Dropdown
+                value={selectedFormId || ""}
+                onChange={(val) => setSelectedFormId(val || null)}
+                options={
+                  forms.length === 0
+                    ? [{ value: "", label: "No Forms Available" }]
+                    : forms.map((f) => ({ value: f.id, label: f.title }))
+                }
+                disabled={forms.length === 0}
+                iconSize={16}
+                wrapperStyle={{ width: "100%", marginBottom: "0.5rem" }}
+                className="md:max-w-xs"
+              />
           </div>
 
           {/* Scrollable list of Question Cards */}
@@ -260,39 +308,11 @@ export default function AnswerPage() {
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
             <label className="block text-sm mb-1">Your password</label>
-            <div style={{ position: "relative" }}>
-              <input
-                type={showPassphrase ? "text" : "password"}
-                value={passphrase}
-                onChange={(e) => setPassphrase(e.target.value)}
-                className="w-full rounded px-3 py-2 pr-10"
-                style={{
-                  border: "1px solid var(--border-color)",
-                  background: "transparent",
-                  color: "var(--text-color)",
-                }}
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassphrase(!showPassphrase)}
-                style={{
-                  position: "absolute",
-                  right: "0.5rem",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  background: "transparent",
-                  border: "none",
-                  cursor: "pointer",
-                  color: "var(--muted-text)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {showPassphrase ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
+            <PasswordInput
+              value={passphrase}
+              onChange={setPassphrase}
+              required
+            />
           </div>
           {error && <p className="text-red-600 text-sm">{error}</p>}
           <button

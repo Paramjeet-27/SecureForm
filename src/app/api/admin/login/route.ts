@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getIronSession } from "iron-session";
 import { cookies } from "next/headers";
-import { readDataFile } from "@/lib/datafile";
+import { readAppData } from "@/lib/appData";
 import { deriveKey, unwrapKey, decrypt } from "@/lib/crypto";
 import { sessionOptions, SessionData } from "@/lib/session";
 
@@ -19,14 +19,13 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { meta, encrypted } = readDataFile() as any;
-  const salt = Buffer.from(meta.adminPassphraseSalt, "base64");
+  const appData = readAppData();
+  const salt = Buffer.from(appData.adminPassphraseSalt, "base64");
   const adminKey = deriveKey(passphrase, salt);
 
   let dek: Buffer;
   try {
-    dek = unwrapKey(meta.adminWrappedDEK, adminKey);
-    decrypt(encrypted, dek); // sanity check it actually works
+    dek = unwrapKey(appData.adminWrappedDEK, adminKey);
   } catch {
     return NextResponse.json(
       { error: "Incorrect passphrase." },

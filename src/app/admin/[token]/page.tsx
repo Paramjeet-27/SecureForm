@@ -4,12 +4,22 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 
 import ThemeProvider, { useThemeIcons } from "@/components/ThemeProvider";
-import { PlusCircle, Trash2, LogOut, Eye, EyeOff } from "lucide-react";
+import {
+  PlusCircle,
+  Trash2,
+  LogOut,
+  Eye,
+  EyeOff,
+  ChevronDown,
+  Pencil,
+} from "lucide-react";
 import LoadingScreen from "@/components/LoadingScreen";
 import InvalidTokenScreen from "@/components/InvalidTokenScreen";
 import { themes, ThemeKey } from "@/themes";
 import { iconOptions, defaultIcons, IconName } from "@/iconOptions";
 import QuestionCard from "@/components/QuestionCard";
+import Dropdown from "@/components/Dropdown";
+import PasswordInput from "@/components/PasswordInput";
 import QuestionModal, {
   QuestionModalSubmitPayload,
 } from "@/components/QuestionModal";
@@ -33,24 +43,14 @@ export default function AdminPage() {
   const [adminPassphrase, setAdminPassphrase] = useState("");
   const [respondentPassphrase, setRespondentPassphrase] = useState("");
   const [passphrase, setPassphrase] = useState("");
-  const [showAdminPassphrase, setShowAdminPassphrase] = useState(false);
-  const [showRespondentPassphrase, setShowRespondentPassphrase] =
-    useState(false);
-  const [showPassphrase, setShowPassphrase] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
   const [questions, setQuestions] = useState<Record<string, any> | null>(null);
 
-  const updateQuestionsState = (
-    fn: (prev: Record<string, any> | null) => Record<string, any> | null,
-  ) => {
-    if ((document as any).startViewTransition) {
-      (document as any).startViewTransition(() => {
-        setQuestions(fn);
-      });
-    } else {
-      setQuestions(fn);
-    }
-  };
+  // Form States
+  const [forms, setForms] = useState<
+    { id: string; title: string; createdAt: string }[]
+  >([]);
+  const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
 
   // theme states
   const [activeTab, setActiveTab] = useState<"questions" | "settings">(
@@ -78,6 +78,27 @@ export default function AdminPage() {
   const [resetError, setResetError] = useState("");
   const [resetSuccess, setResetSuccess] = useState(false);
 
+  const updateQuestionsState = (
+    fn: (prev: Record<string, any> | null) => Record<string, any> | null,
+  ) => {
+    if ((document as any).startViewTransition) {
+      (document as any).startViewTransition(() => {
+        setQuestions(fn);
+      });
+    } else {
+      setQuestions(fn);
+    }
+  };
+
+  const loadForms = async () => {
+    const res = await fetch("/api/forms");
+    const data = await res.json();
+    setForms(data.forms);
+    if (data.forms.length > 0 && !selectedFormId) {
+      setSelectedFormId(data.forms[0].id);
+    }
+  };
+
   const loadThemeSettings = async () => {
     const res = await fetch("/api/admin/theme");
     const data = await res.json();
@@ -87,6 +108,26 @@ export default function AdminPage() {
     );
     setIconSettings(data.icons);
   };
+
+  useEffect(() => {
+    if (!loggedIn || !selectedFormId) return;
+
+    const loadQuestions = async () => {
+      try {
+        const res = await fetch(`/api/admin/data?formId=${selectedFormId}`);
+        const data = await res.json();
+        if (res.ok) {
+          setQuestions(data.questions);
+        } else {
+          setQuestions(null);
+        }
+      } catch (err) {
+        console.error("Failed to load questions", err);
+      }
+    };
+
+    loadQuestions();
+  }, [loggedIn, selectedFormId]);
 
   useEffect(() => {
     const check = async () => {
@@ -107,11 +148,9 @@ export default function AdminPage() {
       const sessionData = await sessionRes.json();
 
       if (sessionData.valid) {
-        const dataRes = await fetch("/api/admin/data");
-        const dataJson = await dataRes.json();
-        setQuestions(dataJson.questions);
-        await loadThemeSettings();
         setLoggedIn(true);
+        await loadForms();
+        await loadThemeSettings();
         setStatus("needsLogin"); // status doesn't matter once loggedIn is true, but keep consistent
         return;
       }
@@ -123,6 +162,25 @@ export default function AdminPage() {
 
     check().catch(() => setError("Could not reach server."));
   }, [token]);
+
+  const handleCreateForm = async (title: string) => {
+    const res = await fetch("/api/forms", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setForms((prev) => [
+        ...prev,
+        { id: data.id, title: data.title, createdAt: data.createdAt },
+      ]);
+      setSelectedFormId(data.id);
+      setQuestions({}); // new form starts empty
+    } else {
+      alert(data.error);
+    }
+  };
 
   const saveThemeSettings = async (updates: {
     theme?: ThemeKey;
@@ -185,14 +243,12 @@ export default function AdminPage() {
     setPassphrase("");
 
     // fetch data now that we're logged in
-    const dataRes = await fetch("/api/admin/data");
-    const dataJson = await dataRes.json();
-    setQuestions(dataJson.questions);
+    await loadForms();
     await loadThemeSettings();
   };
 
   const handleTogglePublish = async (id: string, current: boolean) => {
-    const res = await fetch("/api/admin/questions", {
+    const res = await fetch(`/api/admin/questions?formId=${selectedFormId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, updates: { published: !current } }),
@@ -208,7 +264,7 @@ export default function AdminPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this question and its answer permanently?")) return;
 
-    const res = await fetch("/api/admin/questions", {
+    const res = await fetch(`/api/admin/questions?formId=${selectedFormId}`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id }),
@@ -254,7 +310,7 @@ export default function AdminPage() {
         updates.answer = { value: payload.updatedAnswerValue };
       }
 
-      const res = await fetch("/api/admin/questions", {
+      const res = await fetch(`/api/admin/questions?formId=${selectedFormId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -282,7 +338,7 @@ export default function AdminPage() {
         alert(data.error || "Failed to update question.");
       }
     } else {
-      const res = await fetch("/api/admin/questions", {
+      const res = await fetch(`/api/admin/questions?formId=${selectedFormId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -317,7 +373,7 @@ export default function AdminPage() {
 
     // Swap their order values via two PATCH calls
     await Promise.all([
-      fetch("/api/admin/questions", {
+      fetch(`/api/admin/questions?formId=${selectedFormId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -325,7 +381,7 @@ export default function AdminPage() {
           updates: { order: swapQ.order },
         }),
       }),
-      fetch("/api/admin/questions", {
+      fetch(`/api/admin/questions?formId=${selectedFormId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -380,6 +436,47 @@ export default function AdminPage() {
     setStatus("needsLogin");
   };
 
+  const handleRenameForm = async (formId: string, currentTitle: string) => {
+    const title = prompt("Rename form:", currentTitle);
+    if (!title || title.trim() === currentTitle) return;
+
+    const res = await fetch("/api/forms", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ formId, title }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setForms((prev) =>
+        prev.map((f) => (f.id === formId ? { ...f, title: data.title } : f)),
+      );
+    } else {
+      alert(data.error);
+    }
+  };
+
+  const handleDeleteForm = async (formId: string) => {
+    if (!confirm("Delete this form and all its questions/answers permanently?"))
+      return;
+
+    const res = await fetch("/api/forms", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ formId }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setForms((prev) => prev.filter((f) => f.id !== formId));
+      if (selectedFormId === formId) {
+        const remaining = forms.filter((f) => f.id !== formId);
+        setSelectedFormId(remaining[0]?.id ?? null);
+        setQuestions(remaining.length > 0 ? null : {});
+      }
+    } else {
+      alert(data.error);
+    }
+  };
+
   if (status === "loading") {
     return (
       <ThemeProvider>
@@ -404,87 +501,21 @@ export default function AdminPage() {
           <form onSubmit={handleSetup} className="space-y-4">
             <div>
               <label className="block text-sm mb-1">Your password</label>
-              <div style={{ position: "relative" }}>
-                <input
-                  type={showAdminPassphrase ? "text" : "password"}
-                  value={adminPassphrase}
-                  onChange={(e) => setAdminPassphrase(e.target.value)}
-                  className="w-full rounded px-3 py-2 pr-10"
-                  style={{
-                    border: "1px solid var(--border-color)",
-                    background: "transparent",
-                    color: "var(--text-color)",
-                  }}
-                  minLength={8}
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowAdminPassphrase(!showAdminPassphrase)}
-                  style={{
-                    position: "absolute",
-                    right: "0.5rem",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    background: "transparent",
-                    border: "none",
-                    cursor: "pointer",
-                    color: "var(--muted-text)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  {showAdminPassphrase ? (
-                    <EyeOff size={16} />
-                  ) : (
-                    <Eye size={16} />
-                  )}
-                </button>
-              </div>
+              <PasswordInput
+                value={adminPassphrase}
+                onChange={setAdminPassphrase}
+                minLength={8}
+                required
+              />
             </div>
             <div>
               <label className="block text-sm mb-1">Respondent password</label>
-              <div style={{ position: "relative" }}>
-                <input
-                  type={showRespondentPassphrase ? "text" : "password"}
-                  value={respondentPassphrase}
-                  onChange={(e) => setRespondentPassphrase(e.target.value)}
-                  className="w-full rounded px-3 py-2 pr-10"
-                  style={{
-                    border: "1px solid var(--border-color)",
-                    background: "transparent",
-                    color: "var(--text-color)",
-                  }}
-                  minLength={8}
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() =>
-                    setShowRespondentPassphrase(!showRespondentPassphrase)
-                  }
-                  style={{
-                    position: "absolute",
-                    right: "0.5rem",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    background: "transparent",
-                    border: "none",
-                    cursor: "pointer",
-                    color: "var(--muted-text)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  {showRespondentPassphrase ? (
-                    <EyeOff size={16} />
-                  ) : (
-                    <Eye size={16} />
-                  )}
-                </button>
-              </div>
+              <PasswordInput
+                value={respondentPassphrase}
+                onChange={setRespondentPassphrase}
+                minLength={8}
+                required
+              />
             </div>
             {error && <p className="text-red-600 text-sm">{error}</p>}
             <button
@@ -552,9 +583,82 @@ export default function AdminPage() {
                   gap: "0.375rem",
                 }}
               >
-                <LogoutIcon size={14} />
+                <LogoutIcon size={26} />
                 Logout
               </button>
+            </div>
+
+            <div className="flex flex-col md:flex-row md:items-center gap-3 mb-6">
+              <Dropdown
+                value={selectedFormId || ""}
+                onChange={(val) => setSelectedFormId(val || null)}
+                options={
+                  forms.length === 0
+                    ? [{ value: "", label: "No Forms Available" }]
+                    : forms.map((f) => ({ value: f.id, label: f.title }))
+                }
+                disabled={forms.length === 0}
+                iconSize={26}
+                wrapperStyle={{ width: "100%" }}
+                className="md:max-w-xs"
+              />
+
+              <div className="flex items-center gap-2">
+                {selectedFormId && (
+                  <>
+                    <button
+                      onClick={() => {
+                        const form = forms.find((f) => f.id === selectedFormId);
+                        if (form) handleRenameForm(selectedFormId, form.title);
+                      }}
+                      title="Rename current form"
+                      className="p-2 rounded text-sm flex items-center justify-center transition-all hover:opacity-80"
+                      style={{
+                        border: "1px solid var(--border-color)",
+                        color: "var(--text-color)",
+                        background: "transparent",
+                        cursor: "pointer",
+                        width: "40px",
+                        height: "40px",
+                      }}
+                    >
+                      <Pencil size={18} />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteForm(selectedFormId)}
+                      title="Delete current form"
+                      className="p-2 rounded text-sm flex items-center justify-center transition-all hover:opacity-80"
+                      style={{
+                        border: "1px solid var(--border-color)",
+                        color: "#ef4444",
+                        background: "transparent",
+                        cursor: "pointer",
+                        width: "40px",
+                        height: "40px",
+                      }}
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </>
+                )}
+
+                <button
+                  onClick={() => {
+                    const title = prompt("Form title?");
+                    if (title) handleCreateForm(title);
+                  }}
+                  className="px-4 py-2 rounded text-sm flex items-center gap-1.5 transition-all hover:opacity-90"
+                  style={{
+                    background: "var(--button-gradient)",
+                    color: "#fff",
+                    border: "none",
+                    cursor: "pointer",
+                  }}
+                >
+                  <AddQuestionIcon size={26} className="inline mr-1" />
+                  New Form
+                </button>
+              </div>
             </div>
 
             {/* Tabs */}
@@ -631,31 +735,34 @@ export default function AdminPage() {
               </div>
 
               {/* FAB */}
-              <button
-                onClick={() => {
-                  setEditingQuestion(null);
-                  setShowAddModal(true);
-                }}
-                title="Add question"
-                style={{
-                  position: "fixed",
-                  bottom: "2rem",
-                  right: "2rem",
-                  width: "52px",
-                  height: "52px",
-                  borderRadius: "50%",
-                  background: "var(--button-gradient)",
-                  color: "#fff",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  boxShadow: "0 4px 14px rgba(0,0,0,0.15)",
-                  border: "none",
-                  cursor: "pointer",
-                }}
-              >
-                <AddQuestionIcon size={24} />
-              </button>
+              {selectedFormId && (
+                <button
+                  onClick={() => {
+                    setEditingQuestion(null);
+                    setShowAddModal(true);
+                  }}
+                  title="Add question"
+                  style={{
+                    position: "fixed",
+                    bottom: "2rem",
+                    right: "2rem",
+                    width: "200px",
+                    height: "50px",
+                    borderRadius: "50px",
+                    background: "var(--button-gradient)",
+                    color: "#fff",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    boxShadow: "0 4px 14px rgba(0,0,0,0.15)",
+                    border: "none",
+                    cursor: "pointer",
+                  }}
+                >
+                  <AddQuestionIcon size={26} className="inline mr-1" />
+                  Add Question
+                </button>
+              )}
 
               {/* Add Question Modal */}
               {showAddModal && (
@@ -748,29 +855,22 @@ export default function AdminPage() {
                           </label>
                           <div className="flex items-center gap-2">
                             {CurrentIconComponent && (
-                              <CurrentIconComponent size={18} />
+                              <CurrentIconComponent size={26} />
                             )}
-                            <select
+                            <Dropdown
                               value={currentIcon}
-                              onChange={(e) => {
+                              onChange={(val) => {
                                 const updated = {
                                   ...iconSettings,
-                                  [slot]: e.target.value as IconName,
+                                  [slot]: val as IconName,
                                 };
                                 setIconSettings(updated);
                                 saveThemeSettings({ icons: updated });
                               }}
-                              className="rounded px-2 py-1 text-sm flex-1"
-                              style={{
-                                border: "1px solid var(--border-color)",
-                              }}
-                            >
-                              {Object.keys(iconOptions).map((name) => (
-                                <option key={name} value={name}>
-                                  {name}
-                                </option>
-                              ))}
-                            </select>
+                              options={Object.keys(iconOptions)}
+                              className="flex-1"
+                              style={{ padding: "0.25rem 0.5rem" }}
+                            />
                           </div>
                         </div>
                       );
@@ -810,14 +910,9 @@ export default function AdminPage() {
                         >
                           Your admin passphrase (to confirm it's you)
                         </label>
-                        <input
-                          type="password"
+                        <PasswordInput
                           value={currentAdminPassphrase}
-                          onChange={(e) =>
-                            setCurrentAdminPassphrase(e.target.value)
-                          }
-                          className="w-full rounded px-3 py-2"
-                          style={{ border: "1px solid var(--border-color)" }}
+                          onChange={setCurrentAdminPassphrase}
                           required
                         />
                       </div>
@@ -828,14 +923,9 @@ export default function AdminPage() {
                         >
                           New respondent passphrase
                         </label>
-                        <input
-                          type="password"
+                        <PasswordInput
                           value={newRespondentPassphrase}
-                          onChange={(e) =>
-                            setNewRespondentPassphrase(e.target.value)
-                          }
-                          className="w-full rounded px-3 py-2"
-                          style={{ border: "1px solid var(--border-color)" }}
+                          onChange={setNewRespondentPassphrase}
                           minLength={8}
                           required
                         />
@@ -852,6 +942,7 @@ export default function AdminPage() {
                           style={{
                             background: "var(--button-gradient)",
                             color: "#fff",
+                            cursor: "pointer",
                           }}
                         >
                           Confirm Reset
@@ -865,7 +956,10 @@ export default function AdminPage() {
                             setNewRespondentPassphrase("");
                           }}
                           className="text-sm"
-                          style={{ color: "var(--muted-text)" }}
+                          style={{
+                            color: "var(--muted-text)",
+                            cursor: "pointer",
+                          }}
                         >
                           Cancel
                         </button>
@@ -902,39 +996,11 @@ export default function AdminPage() {
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
             <label className="block text-sm mb-1">Your password</label>
-            <div style={{ position: "relative" }}>
-              <input
-                type={showPassphrase ? "text" : "password"}
-                value={passphrase}
-                onChange={(e) => setPassphrase(e.target.value)}
-                className="w-full rounded px-3 py-2 pr-10"
-                style={{
-                  border: "1px solid var(--border-color)",
-                  background: "transparent",
-                  color: "var(--text-color)",
-                }}
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassphrase(!showPassphrase)}
-                style={{
-                  position: "absolute",
-                  right: "0.5rem",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  background: "transparent",
-                  border: "none",
-                  cursor: "pointer",
-                  color: "var(--muted-text)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {showPassphrase ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
+            <PasswordInput
+              value={passphrase}
+              onChange={setPassphrase}
+              required
+            />
           </div>
           {error && <p className="text-red-600 text-sm">{error}</p>}
           <button
