@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useThemeIcons } from "./ThemeProvider";
+import Dropdown from "./Dropdown";
 import { iconOptions, defaultIcons } from "@/iconOptions";
 import { Pencil, Trash2, PlusCircle, Check, X } from "lucide-react";
 
@@ -224,17 +225,18 @@ const QuestionModal = ({
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-3">
-          <select
+          <Dropdown
             value={type}
-            onChange={(e) => handleTypeSelect(e.target.value)}
-            className="w-full rounded px-2 py-2"
-            style={{ border: "1px solid var(--border-color)" }}
-          >
-            <option value="short_text">Short text</option>
-            <option value="long_text">Long text</option>
-            <option value="mcq_single">Single Select</option>
-            <option value="mcq_multi">Multi Select</option>
-          </select>
+            onChange={handleTypeSelect}
+            options={[
+              { value: "short_text", label: "Short text" },
+              { value: "long_text", label: "Long text" },
+              { value: "mcq_single", label: "Single Select" },
+              { value: "mcq_multi", label: "Multi Select" },
+            ]}
+            iconSize={16}
+            wrapperStyle={{ width: "100%" }}
+          />
 
           {/* Type-change confirmation */}
           {pendingType && (
